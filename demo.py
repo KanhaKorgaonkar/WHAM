@@ -34,7 +34,8 @@ def run(cfg,
         calib=None,
         run_global=True,
         save_pkl=False,
-        visualize=False):
+        visualize=False,
+        run_smplify=False):
     
     cap = cv2.VideoCapture(video)
     assert cap.isOpened(), f'Faild to load video file {video}'
@@ -139,7 +140,7 @@ def run(cfg,
                 pred = network(x, inits, features, mask=mask, init_root=init_root, cam_angvel=cam_angvel, return_y_up=True, **kwargs)
         
         # if False:
-        if args.run_smplify:
+        if run_smplify:
             smplify = TemporalSMPLify(smpl, img_w=width, img_h=height, device=cfg.DEVICE)
             input_keypoints = dataset.tracking_results[_id]['keypoints']
             pred = smplify.fit(pred, input_keypoints, **kwargs)
@@ -227,7 +228,8 @@ if __name__ == '__main__':
         args.calib, 
         run_global=not args.estimate_local_only, 
         save_pkl=args.save_pkl,
-        visualize=args.visualize)
+        visualize=args.visualize,
+        run_smplify=args.run_smplify)
         
     print()
     logger.info('Done !')
