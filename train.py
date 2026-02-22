@@ -17,6 +17,15 @@ from lib.data.dataloader import setup_dloaders
 from lib.utils.utils import create_logger, get_optimizer
 from lib.models import build_network, build_body_model
 
+
+def log_device_info(logger, device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
+        logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
+        logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    else:
+        logger.info(f'Using device -> {device}')
+
+
 def setup_seed(seed):
     """ Setup seed for reproducibility """
     random.seed(seed)
@@ -33,8 +42,7 @@ def main(cfg):
         setup_seed(cfg.SEED_VALUE)
 
     logger = create_logger(cfg.LOGDIR, phase='debug' if cfg.DEBUG else 'train')
-    logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
-    logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    log_device_info(logger, cfg.DEVICE)
     logger.info(pprint.pformat(cfg))
     
     writer = SummaryWriter(log_dir=cfg.LOGDIR)

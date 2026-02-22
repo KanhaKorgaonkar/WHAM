@@ -53,6 +53,7 @@ class CustomDataset(torch.utils.data.Dataset):
         
         self.smpl = build_body_model('cpu')
         self.keypoints_normalizer = Normalizer(cfg)
+        self.prefix = ''
         
         self._to = lambda x: x.unsqueeze(0).to(self.device)
         
@@ -68,7 +69,8 @@ class CustomDataset(torch.utils.data.Dataset):
         return self.__getitem__(index)
     
     def __getitem__(self, _index):
-        if _index >= len(self): return
+        if _index >= len(self):
+            raise IndexError('CustomDataset index out of range')
         
         index = sorted(list(self.tracking_results.keys()))[_index]
             

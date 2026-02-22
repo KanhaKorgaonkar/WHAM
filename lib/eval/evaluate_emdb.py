@@ -1,5 +1,4 @@
 import os
-import time
 import os.path as osp
 from glob import glob
 from collections import defaultdict
@@ -24,9 +23,6 @@ from lib.eval.eval_utils import (
     batch_align_by_pelvis,
     first_align_joints,
     global_align_joints,
-    compute_rte,
-    compute_jitter,
-    compute_foot_sliding
     batch_compute_similarity_transform_torch,
 )
 from lib.utils import transforms
@@ -40,13 +36,22 @@ Current implementation requires EMDB dataset downloaded at ./datasets/EMDB/
 """
 
 m2mm = 1e3
+
+
+def log_device_info(device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
+        logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
+        logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    else:
+        logger.info(f'Using device -> {device}')
+
+
 @torch.no_grad()
 def main(cfg, args):
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     
-    logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
-    logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')    
+    log_device_info(cfg.DEVICE)
     
     # ========= Dataloaders ========= #
     eval_loader = setup_eval_dataloader(cfg, 'emdb', args.eval_split, cfg.MODEL.BACKBONE)
@@ -195,11 +200,6 @@ def main(cfg, args):
             jitter = compute_jitter(pred_glob, fps=30)
             foot_sliding = compute_foot_sliding(target_glob, pred_glob, masks) * m2mm
             # =======>
-            
-            # Additional metrics
-            rte = compute_rte(torch.from_numpy(trans[masks]), pred_trans.cpu()) * 1e2
-            jitter = compute_jitter(pred_glob, fps=30)
-            foot_sliding = compute_foot_sliding(target_glob, pred_glob, masks) * m2mm
             
             # <======= Accumulate the results over entire sequences
             accumulator['pa_mpjpe'].append(pa_mpjpe)
