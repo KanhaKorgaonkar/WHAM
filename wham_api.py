@@ -1,18 +1,11 @@
 import os
-import sys
-import time
-import colorsys
-import argparse
 import os.path as osp
-from glob import glob
 from collections import defaultdict
 
 import cv2
 import torch
 import joblib
-import imageio
 import numpy as np
-from smplx import SMPL
 from loguru import logger
 
 from configs.config import get_cfg_defaults
@@ -56,6 +49,7 @@ class WHAM_API(object):
     def preprocessing(self, video, cap, fps, length, output_dir):
         if not (osp.exists(osp.join(output_dir, 'tracking_results.pth')) and 
                 osp.exists(osp.join(output_dir, 'slam_results.pth'))):
+            self.detector.initialize_tracking()
             while (cap.isOpened()):
                 flag, img = cap.read()
                 if not flag: break
@@ -87,6 +81,7 @@ class WHAM_API(object):
             tracking_results = joblib.load(osp.join(output_dir, 'tracking_results.pth'))
             slam_results = joblib.load(osp.join(output_dir, 'slam_results.pth'))
 
+        cap.release()
         return tracking_results, slam_results
     
     @torch.no_grad()
@@ -96,9 +91,8 @@ class WHAM_API(object):
         
         # run WHAM
         results = defaultdict(dict)
-        for batch in dataset:
-            if batch is None: break
-
+        for subj in range(len(dataset)):
+            batch = dataset.load_data(subj)
             _id, x, inits, features, mask, init_root, cam_angvel, frame_id, kwargs = batch
             
             # inference
@@ -113,7 +107,7 @@ class WHAM_API(object):
             results[_id]['trans_world'] = pred['trans_world'].cpu().squeeze(0).numpy()
             results[_id]['frame_id'] = frame_id
         
-        joblib.dump(slam_results, osp.join(output_dir, 'wham_results.pth'))
+        joblib.dump(results, osp.join(output_dir, 'wham_results.pth'))
         return results
     
     @torch.no_grad()
@@ -124,7 +118,10 @@ class WHAM_API(object):
 
         # Whether or not estimating motion in global coordinates
         run_global = run_global and _run_global
-        if run_global: self.slam = SLAMModel(video, output_dir, width, height, calib)
+        if run_global:
+            self.slam = SLAMModel(video, output_dir, width, height, calib)
+        else:
+            self.slam = None
         
         # preprocessing to get detection, tracking, slam results and image features from video input
         tracking_results, slam_results = self.preprocessing(video, cap, fps, length, output_dir)
