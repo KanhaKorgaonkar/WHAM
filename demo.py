@@ -27,6 +27,15 @@ except:
     logger.info('DPVO is not properly installed. Only estimate in local coordinates !')
     _run_global = False
 
+
+def log_device_info(device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
+        logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
+        logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    else:
+        logger.info(f'Using device -> {device}')
+
+
 def run(cfg,
         video,
         output_pth,
@@ -207,8 +216,7 @@ if __name__ == '__main__':
     cfg = get_cfg_defaults()
     cfg.merge_from_file('configs/yamls/demo.yaml')
     
-    logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
-    logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')    
+    log_device_info(cfg.DEVICE)
     
     # ========= Load WHAM ========= #
     smpl_batch_size = cfg.TRAIN.BATCH_SIZE * cfg.DATASET.SEQLEN

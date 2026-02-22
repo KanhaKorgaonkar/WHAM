@@ -34,13 +34,22 @@ except:
 
 
 m2mm = 1e3
+
+
+def log_device_info(device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
+        logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
+        logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    else:
+        logger.info(f'Using device -> {device}')
+
+
 @torch.no_grad()
 def main(cfg, args):
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     
-    logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
-    logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')    
+    log_device_info(cfg.DEVICE)
     
     # ========= Dataloaders ========= #
     eval_loader = setup_eval_dataloader(cfg, '3dpw', 'test', cfg.MODEL.BACKBONE)

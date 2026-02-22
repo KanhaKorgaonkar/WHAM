@@ -25,14 +25,26 @@ from lib.utils.utils import prepare_batch
 from lib.utils.imutils import avg_preds
 
 m2mm = 1e3
-smplx2smpl = torch.from_numpy(joblib.load(_C.BMODEL.SMPLX2SMPL)['matrix']).unsqueeze(0).float().cuda()
+
+
+def log_device_info(device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
+        logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
+        logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
+    else:
+        logger.info(f'Using device -> {device}')
+
+
+def load_smplx2smpl(device):
+    return torch.from_numpy(joblib.load(_C.BMODEL.SMPLX2SMPL)['matrix']).unsqueeze(0).float().to(device)
+
+
 @torch.no_grad()
 def main(cfg, args):
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     
-    logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
-    logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')    
+    log_device_info(cfg.DEVICE)
     
     # ========= Dataloaders ========= #
     eval_loader = setup_eval_dataloader(cfg, 'rich', 'test', cfg.MODEL.BACKBONE)
@@ -46,6 +58,7 @@ def main(cfg, args):
     
     # Build neutral SMPL model for WHAM and gendered SMPLX models for the groundtruth data
     smpl = SMPL(_C.BMODEL.FLDR, gender='neutral').to(cfg.DEVICE)
+    smplx2smpl = load_smplx2smpl(cfg.DEVICE)
     
     # Load vertices -> joints regression matrix to evaluate
     J_regressor_eval = smpl.J_regressor.clone().unsqueeze(0)
@@ -110,7 +123,7 @@ def main(cfg, args):
                 body_pose=gt_pose[:, 1:-2].reshape(-1, 63),
                 global_orient=gt_pose[:, 0],
                 betas=gt['betas'][0])
-            target_verts = torch.matmul(smplx2smpl, target_output.vertices.cuda()).cpu()
+            target_verts = torch.matmul(smplx2smpl, target_output.vertices.to(cfg.DEVICE)).cpu()
             target_j3d = torch.matmul(J_regressor_eval, target_verts.to(cfg.DEVICE)).cpu()
             time_dict['building target'] = time() - _t; _t = time()
             # =======>

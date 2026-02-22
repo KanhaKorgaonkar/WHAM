@@ -38,12 +38,12 @@ Current implementation requires EMDB dataset downloaded at ./datasets/EMDB/
 m2mm = 1e3
 
 
-def log_device_info():
-    if torch.cuda.is_available():
+def log_device_info(device):
+    if str(device).startswith('cuda') and torch.cuda.is_available():
         logger.info(f'GPU name -> {torch.cuda.get_device_name()}')
         logger.info(f'GPU feat -> {torch.cuda.get_device_properties("cuda")}')
     else:
-        logger.info('CUDA is not available; running on CPU')
+        logger.info(f'Using device -> {device}')
 
 
 @torch.no_grad()
@@ -51,7 +51,7 @@ def main(cfg, args):
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     
-    log_device_info()
+    log_device_info(cfg.DEVICE)
     
     # ========= Dataloaders ========= #
     eval_loader = setup_eval_dataloader(cfg, 'emdb', args.eval_split, cfg.MODEL.BACKBONE)
